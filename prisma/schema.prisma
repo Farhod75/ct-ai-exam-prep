@@ -1,0 +1,147 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/ct_ai_exam_prep/nextjs_space/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  quizAttempts  QuizAttempt[]
+  studyPlanDays StudyPlanDay[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+model Question {
+  id            Int      @id @default(autoincrement())
+  certification String   @default("CT-AI")
+  chapter       Int
+  question      String   @db.Text
+  optionA       String   @db.Text
+  optionB       String   @db.Text
+  optionC       String   @db.Text
+  optionD       String   @db.Text
+  correctAnswer String
+  explanation   String   @db.Text
+  difficulty    String
+  topic         String
+  createdAt     DateTime @default(now())
+  answers       QuizAnswer[]
+}
+
+model QuizAttempt {
+  id            String       @id @default(cuid())
+  userId        String
+  certification String       @default("CT-AI")
+  mode          String       // 'practice' or 'mock'
+  chapter       Int?         // null for mock exams
+  score         Int
+  total         Int
+  percentage    Float
+  timeTaken     Int          // seconds
+  createdAt     DateTime     @default(now())
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  answers       QuizAnswer[]
+}
+
+model QuizAnswer {
+  id          String      @id @default(cuid())
+  attemptId   String
+  questionId  Int
+  selected    String
+  isCorrect   Boolean
+  attempt     QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model StudyNote {
+  id              Int    @id @default(autoincrement())
+  certification   String @default("CT-AI")
+  chapterNumber   Int
+  chapterTitle    String
+  learningObjectives String @db.Text
+  content         String @db.Text
+  keyTerms        String @db.Text
+  @@unique([certification, chapterNumber])
+}
+
+model Flashcard {
+  id            Int    @id @default(autoincrement())
+  certification String @default("CT-AI")
+  chapter       Int
+  front         String @db.Text
+  back          String @db.Text
+}
+
+model StudyPlanDay {
+  id            String   @id @default(cuid())
+  userId        String
+  certification String   @default("CT-AI")
+  dayNumber     Int
+  title         String
+  tasks         String   @db.Text  // JSON array of tasks
+  completed     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, dayNumber, certification])
+}
+
+model OfficialQuestion {
+  id            Int      @id  // Keep original order; CT-AI: 1-40, CT-GenAI: 1001-1043
+  certification String   @default("CT-AI")
+  question      String   @db.Text
+  optionA       String   @db.Text
+  optionB       String   @db.Text
+  optionC       String   @db.Text
+  optionD       String?  @db.Text
+  optionE       String?  @db.Text  // Some questions have 5 options
+  correctAnswer String   // Can be "a", "b,c" for multi-select
+  explanation   String   @db.Text
+  points        Int      @default(1)
+  lo            String   // Learning Objective reference
+  createdAt     DateTime @default(now())
+}
